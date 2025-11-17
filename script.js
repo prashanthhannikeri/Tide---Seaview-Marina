@@ -1,17 +1,16 @@
-const API_KEY = 'YOUR_WORLD_TIDES_API_KEY'; // Replace with your WorldTides API key
-const LAT = -41.183; // Seaview Marina latitude
-const LON = 174.933; // Seaview Marina longitude
+const API_KEY = 'YOUR_WORLD_TIDES_API_KEY'; // Replace with your key
+const LAT = -41.183;
+const LON = 174.933;
+
+let tideChart;
 
 async function fetchTideData() {
     try {
-        const response = await fetch(`https://www.worldtides.info/api/v2?heights&lat=${LAT}&lon=${LON}&length=24&key=${API_KEY}`);
+        const response = await fetch(`https://www.worldtides.info/api/v2?heights&lat=${LAT}&lon=${LON}&length=24&interval=10&key=${API_KEY}`);
         const data = await response.json();
 
-        if (!data.heights) {
-            throw new Error('No tide data available.');
-        }
+        if (!data.heights) throw new Error('No tide data available.');
 
-        // Map API response to tideData array
         const tideData = data.heights.map(item => {
             const date = new Date(item.dt * 1000);
             const hours = date.getHours().toString().padStart(2, '0');
@@ -24,6 +23,10 @@ async function fetchTideData() {
 
         displayTable(tideData);
         displayChart(tideData);
+
+        // Update every 10 minutes
+        setTimeout(fetchTideData, 600000);
+
     } catch (error) {
         console.error('Error fetching tide data:', error);
     }
@@ -42,9 +45,6 @@ function displayTable(tideData) {
 function displayChart(tideData) {
     const ctx = document.getElementById('tideChart').getContext('2d');
 
-    const now = new Date();
-    const currentTime = now.getHours() + now.getMinutes() / 60;
-
     const verticalLinePlugin = {
         id: 'verticalLine',
         afterDraw: (chart) => {
@@ -52,14 +52,19 @@ function displayChart(tideData) {
             const yScale = chart.scales.y;
             const ctx = chart.ctx;
 
+            const now = new Date();
+            const currentTime = now.getHours() + now.getMinutes() / 60;
+
             const nearestIndex = tideData.reduce((prev, curr, i) => {
-                const timeParts = curr.time.split(':');
-                const timeValue = parseInt(timeParts[0]) + parseInt(timeParts[1]) / 60;
+                const [h, m] = curr.time.split(':').map(Number);
+                const timeValue = h + m / 60;
                 return Math.abs(timeValue - currentTime) < Math.abs(prev.diff) ? {index: i, diff: timeValue - currentTime} : prev;
             }, {index: 0, diff: 1000}).index;
 
             const xPos = xScale.getPixelForValue(nearestIndex);
+            const yPos = yScale.getPixelForValue(tideData[nearestIndex].height);
 
+            // Vertical line
             ctx.save();
             ctx.beginPath();
             ctx.moveTo(xPos, yScale.top);
@@ -67,11 +72,19 @@ function displayChart(tideData) {
             ctx.lineWidth = 2;
             ctx.strokeStyle = 'red';
             ctx.stroke();
+
+            // Circle marker at current tide
+            ctx.beginPath();
+            ctx.arc(xPos, yPos, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = 'red';
+            ctx.fill();
             ctx.restore();
         }
     };
 
-    new Chart(ctx, {
+    if (tideChart) tideChart.destroy(); // Remove old chart
+
+    tideChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: tideData.map(d => d.time),
@@ -82,18 +95,17 @@ function displayChart(tideData) {
                 backgroundColor: 'rgba(0,119,190,0.2)',
                 fill: true,
                 tension: 0.4,
-                pointRadius: 5,
+                pointRadius: 3,
                 pointBackgroundColor: '#0077be'
             }]
         },
         options: {
+            animation: false,
             scales: {
                 x: { title: { display: true, text: 'Time' } },
                 y: { title: { display: true, text: 'Height (m)' }, beginAtZero: false }
             },
-            plugins: {
-                legend: { display: false }
-            }
+            plugins: { legend: { display: false } }
         },
         plugins: [verticalLinePlugin]
     });
