@@ -1,31 +1,25 @@
-const API_KEY = 'YOUR_WORLD_TIDES_API_KEY'; // Replace with your key
-const LAT = -41.183;
-const LON = 174.933;
-
 let tideChart;
 
 async function fetchTideData() {
     try {
-        const response = await fetch(`https://www.worldtides.info/api/v2?heights&lat=${LAT}&lon=${LON}&length=24&interval=10&key=${API_KEY}`);
-        const data = await response.json();
+        // Fetch CSV from GitHub
+        const response = await fetch('seaview-tide.csv');
+        const csvText = await response.text();
 
-        if (!data.heights) throw new Error('No tide data available.');
-
-        const tideData = data.heights.map(item => {
-            const date = new Date(item.dt * 1000);
-            const hours = date.getHours().toString().padStart(2, '0');
-            const minutes = date.getMinutes().toString().padStart(2, '0');
+        // Parse CSV
+        const data = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+        const tideData = data.data.map(item => {
             return {
-                time: `${hours}:${minutes}`,
-                height: item.height
+                time: item.Time,              // Make sure CSV column name matches
+                height: parseFloat(item.Height)
             };
         });
 
         displayTable(tideData);
         displayChart(tideData);
 
-        // Update every 10 minutes
-        setTimeout(fetchTideData, 600000);
+        // Refresh every hour (optional)
+        setTimeout(fetchTideData, 3600000);
 
     } catch (error) {
         console.error('Error fetching tide data:', error);
@@ -82,7 +76,7 @@ function displayChart(tideData) {
         }
     };
 
-    if (tideChart) tideChart.destroy(); // Remove old chart
+    if (tideChart) tideChart.destroy();
 
     tideChart = new Chart(ctx, {
         type: 'line',
