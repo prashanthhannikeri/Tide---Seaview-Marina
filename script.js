@@ -2,23 +2,20 @@ let tideChart;
 
 async function fetchTideData() {
     try {
-        // Fetch CSV from GitHub
         const response = await fetch('seaview-tide.csv');
         const csvText = await response.text();
 
-        // Parse CSV
+        // Parse CSV using PapaParse
         const data = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-        const tideData = data.data.map(item => {
-            return {
-                time: item.Time,              // Make sure CSV column name matches
-                height: parseFloat(item.Height)
-            };
-        });
+        const tideData = data.data.map(item => ({
+            time: item.Time,
+            height: parseFloat(item.Height)
+        }));
 
         displayTable(tideData);
         displayChart(tideData);
 
-        // Refresh every hour (optional)
+        // Refresh every hour
         setTimeout(fetchTideData, 3600000);
 
     } catch (error) {
@@ -72,6 +69,12 @@ function displayChart(tideData) {
             ctx.arc(xPos, yPos, 6, 0, 2 * Math.PI);
             ctx.fillStyle = 'red';
             ctx.fill();
+
+            // Floating numeric height
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = 'black';
+            ctx.textAlign = 'center';
+            ctx.fillText(tideData[nearestIndex].height.toFixed(2) + ' m', xPos, yPos - 10);
             ctx.restore();
         }
     };
@@ -89,8 +92,7 @@ function displayChart(tideData) {
                 backgroundColor: 'rgba(0,119,190,0.2)',
                 fill: true,
                 tension: 0.4,
-                pointRadius: 3,
-                pointBackgroundColor: '#0077be'
+                pointRadius: 0
             }]
         },
         options: {
