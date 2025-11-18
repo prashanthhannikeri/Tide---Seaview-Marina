@@ -1,4 +1,4 @@
-const API_KEY = 'YOUR_WORLD_TIDES_API_KEY'; // Replace with your WorldTides API key
+const API_KEY = 'd6220d99-7462-44bf-9784-a0d60e1bdcc6'; // Replace with your WorldTides API key
 const LAT = -41.183; // Seaview Marina latitude
 const LON = 174.933; // Seaview Marina longitude
 
